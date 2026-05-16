@@ -51,18 +51,14 @@ const createArticle = async (req, res, next) => {
 // Get All Articles
 const getAllArticles = async (req, res, next) => {
     try {
-        //search
-         const { title, content } = req.query.q  || "";
+        // Optional text search via `q` query param
+         const search = req.query.q || "";
 
-         //PAGINATION
+         // PAGINATION
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 5;
         const skip = (page - 1) * limit;
-        const query =  search ? {
-            $text: {
-                $search: search
-            },
-        } : {};
+        const query = search ? { $text: { $search: search } } : {};
 
         const articles = await Article.find(query)
         .populate('author', 'name email')
