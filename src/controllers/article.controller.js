@@ -1,49 +1,45 @@
-const Article = require('../models/article.model');
-const ApiFeatures = require('../utils/apiFeatures');
+const Article = require("../models/article.model");
+const ApiFeatures = require("../utils/apiFeatures");
+const { createArticleValidation, updateArticleValidation } = require("../validators/article.validator");
 
-const { createArticleValidation, updateArticleValidation } = require('../validators/article.validator');
-
-const searchArticles = async (req, res, next) => {
+exports.createArticle = async (req, res) => {
   try {
-    const query = req.query.q;
-
-    if (!query) {
-      return res.status(400).json({ success: false, message: 'Search query is required' });
-    }
-
-    const articles = await Article.find({ $text: { $search: query } }).populate('author', 'name email');
-    res.status(200).json({ success: true, data: articles });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const createArticle = async (req, res, next) => {
-  try {
-    const { title, content } = req.body;
-
-    const { error } = createArticleValidation(req.body);
-    if (error) {
-      return res.status(400).json({ success: false, message: error.details[0].message });
+    // Allow image-only posts: if an image is uploaded, require only a valid title.
+    let error = null;
+    if (req.file) {
+      const titleSchema = { title: { type: 'string' } };
+      // simple runtime check for title length
+      if (!req.body.title || req.body.title.length < 3 || req.body.title.length > 100) {
+        return res.status(400).json({ message: 'Title is required and must be 3-100 characters' });
+      }
+    } else {
+      const validation = createArticleValidation(req.body);
+      error = validation.error;
+      if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+      }
     }
 
     const article = await Article.create({
-      title,
-      content,
+      title: req.body.title,
+      content: req.body.content,
+      image: req.file ? req.file.path : null,
       author: req.user._id,
     });
 
-    res.status(201).json({
-      success: true,
-      message: 'Article created successfully',
-      data: article,
-    });
+    if (req.file) {
+      return res.status(201).json({ success: true, message: 'Image uploaded successfully', data: article });
+    }
+
+    res.status(201).json(article);
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
-const getAllArticles = async (req, res, next) => {
+exports.getAllArticles = async (req, res, next) => {
   try {
     const baseQuery = Article.find().populate('author', 'name email').sort({ createdAt: -1 });
     const features = new ApiFeatures(baseQuery, req.query).search().paginate(5);
@@ -63,72 +59,86 @@ const getAllArticles = async (req, res, next) => {
   }
 };
 
-const getArticleById = async (req, res, next) => {
+exports.searchArticles = async (req, res) => {
   try {
-    const article = await Article.findById(req.params.id).populate('author', 'name email');
-
-    if (!article) {
-      return res.status(404).json({ success: false, message: 'Article not found' });
+    const query = req.query.q;
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
     }
 
-    res.status(200).json({ success: true, data: article });
+    const regex = new RegExp(query, "i");
+    const articles = await Article.find({
+      $or: [{ title: regex }, { content: regex }],
+    }).populate("author", "name email");
+
+    res.status(200).json(articles);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-const updateArticle = async (req, res, next) => {
+exports.getArticleById = async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const article = await Article.findById(req.params.id).populate("author", "name email");
 
+    if (!article) {
+      return res.status(404).json({ message: "Article not found" });
+    }
+
+    res.status(200).json(article);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateArticle = async (req, res) => {
+  try {
     const { error } = updateArticleValidation(req.body);
     if (error) {
-      return res.status(400).json({ success: false, message: error.details[0].message });
+      return res.status(400).json({ message: error.details[0].message });
     }
 
     const article = await Article.findById(req.params.id);
     if (!article) {
-      return res.status(404).json({ success: false, message: 'Article not found' });
+      return res.status(404).json({ message: "Article not found" });
     }
 
-    if (article.author.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    if (article.author && article.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
     }
 
-    article.title = title || article.title;
-    article.content = content || article.content;
+    article.title = req.body.title || article.title;
+    article.content = req.body.content || article.content;
+    if (req.file) {
+      article.image = req.file.path;
+    }
 
     await article.save();
 
-    res.status(200).json({ success: true, message: 'Article updated successfully', data: article });
+    if (req.file) {
+      return res.status(200).json({ success: true, message: 'Image uploaded successfully', data: article });
+    }
+
+    res.status(200).json(article);
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-const deleteArticle = async (req, res, next) => {
+exports.deleteArticle = async (req, res) => {
   try {
     const article = await Article.findById(req.params.id);
     if (!article) {
-      return res.status(404).json({ success: false, message: 'Article not found' });
+      return res.status(404).json({ message: "Article not found" });
     }
 
-    if (article.author.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Unauthorized access' });
+    if (article.author && article.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
     }
 
-    await article.remove();
-    res.status(200).json({ success: true, message: 'Article deleted successfully' });
+    await article.deleteOne();
+    res.status(200).json({ message: "Article deleted successfully" });
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: error.message });
   }
-};
-
-module.exports = {
-  createArticle,
-  getAllArticles,
-  getArticleById,
-  updateArticle,
-  deleteArticle,
-  searchArticles,
 };

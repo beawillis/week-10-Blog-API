@@ -10,6 +10,7 @@ Core capabilities:
 - User registration and login with hashed passwords
 - JWT-based protected routes
 - Create, read, update, delete operations for articles
+- Optional article image uploads with Multer and Cloudinary
 - Full-text search on articles
 - Pagination support on article listing
 - Centralized environment variable validation
@@ -23,6 +24,8 @@ Core capabilities:
 - JWT for authentication
 - Joi for request validation
 - Bcrypt for password hashing
+- Multer for file uploads
+- Cloudinary for image storage
 - Helmet, CORS, Morgan
 
 ## Project Structure
@@ -75,10 +78,14 @@ Required variables:
 - PORT
 - MONGO_URI
 - JWT_SECRET
+- CLOUDINARY_CLOUD_NAME
+- CLOUDINARY_API_KEY
+- CLOUDINARY_API_SECRET
 
 Optional variables:
 - NODE_ENV
 - CORS_ORIGIN
+- CLOUDINARY_FOLDER
 
 Example:
 
@@ -88,6 +95,10 @@ MONGO_URI=mongodb://127.0.0.1:27017/week-10-blog-api
 JWT_SECRET=replace-with-a-long-random-secret
 NODE_ENV=development
 CORS_ORIGIN=*
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+CLOUDINARY_FOLDER=week-10-blog-api
 ```
 
 ### 3. Run the server
@@ -160,6 +171,8 @@ Create article request body:
 }
 ```
 
+To upload an image, send the request as `multipart/form-data` and include an `image` file field.
+
 Authorization header for protected routes:
 
 ```text
@@ -176,6 +189,11 @@ Auth validation:
 Article validation:
 - Title: 3 to 100 characters
 - Content: minimum 20 characters
+
+Upload validation:
+- Image field name: `image`
+- Accepted types: common image MIME types
+- Maximum size: 5MB
 
 ## Environment Validation
 
@@ -194,6 +212,8 @@ If any are missing or invalid, the app exits early with a clear error.
 - Custom logger middleware
 - Centralized error handler
 - JWT auth middleware for protected routes
+- Multer memory storage for incoming images
+- Cloudinary upload and cleanup for article images
 
 ## Pagination and Search
 

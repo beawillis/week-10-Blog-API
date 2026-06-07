@@ -1,22 +1,28 @@
-const express = require('express');
-
+const express = require("express");
 const router = express.Router();
 
-const authMiddleware = require('../middlewares/auth');
+const upload = require("../config/multer");
+const auth = require("../middlewares/auth");
+
 const {
   createArticle,
   getAllArticles,
+  searchArticles,
   getArticleById,
   updateArticle,
   deleteArticle,
-  searchArticles,
-} = require('../controllers/article.controller');
+} = require("../controllers/article.controller");
 
-router.post('/', authMiddleware, createArticle);
-router.get('/', getAllArticles);
-router.get('/search', searchArticles);
-router.get('/:id', getArticleById);
-router.patch('/:id', authMiddleware, updateArticle);
-router.delete('/:id', authMiddleware, deleteArticle);
+router.post(
+  "/",
+  auth,
+  upload.single("image"),
+  createArticle
+);
+router.get("/", getAllArticles);
+router.get("/search", searchArticles);
+router.get("/:id", getArticleById);
+router.patch("/:id", auth, upload.single("image"), updateArticle);
+router.delete("/:id", auth, deleteArticle);
 
 module.exports = router;
