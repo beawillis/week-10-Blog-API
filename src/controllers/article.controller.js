@@ -1,5 +1,6 @@
 const Article = require("../models/article.model");
 const ApiFeatures = require("../utils/apiFeatures");
+const { uploadImage, deleteImage } = require("../utils/cloudinary");
 const { createArticleValidation, updateArticleValidation } = require("../validators/article.validator");
 
 exports.createArticle = async (req, res) => {
@@ -20,10 +21,12 @@ exports.createArticle = async (req, res) => {
       }
     }
 
+    const imageData = req.file ? await uploadImage(req.file.buffer) : null;
+
     const article = await Article.create({
       title: req.body.title,
       content: req.body.content,
-      image: req.file ? req.file.path : null,
+      image: imageData ? imageData.secureUrl : null,
       author: req.user._id,
     });
 
@@ -110,7 +113,12 @@ exports.updateArticle = async (req, res) => {
     article.title = req.body.title || article.title;
     article.content = req.body.content || article.content;
     if (req.file) {
-      article.image = req.file.path;
+      if (article.image) {
+        await deleteImage(article.image);
+      }
+
+      const imageData = await uploadImage(req.file.buffer);
+      article.image = imageData.secureUrl;
     }
 
     await article.save();
