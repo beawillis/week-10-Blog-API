@@ -2,6 +2,9 @@
 
 A production-style REST API for blog articles with JWT authentication, input validation, and MongoDB persistence.
 
+# Postman Documentation
+https://documenter.getpostman.com/view/53497293/2sBXwsNArm
+
 ## Overview
 
 This project is built with Node.js, Express, and MongoDB using an MVC-oriented layout inside the src folder.
